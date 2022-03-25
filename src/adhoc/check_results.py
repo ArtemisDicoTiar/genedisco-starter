@@ -25,18 +25,30 @@ plot_df = results[
 }, axis=1)
 
 plot_df["MAE"].plot()
+plt.title("MeanAbsoluteError")
+plt.xlabel("cycles")
+plt.ylabel("mae")
 plt.grid()
 plt.show()
 
 plot_df["RMSE"].plot()
+plt.title("RootMeanSquaredError")
+plt.xlabel("cycles")
+plt.ylabel("rmse")
 plt.grid()
 plt.show()
 
 plot_df["sMAPE"].plot()
+plt.title("SymmetricMeanAbsolutePercentageError")
+plt.xlabel("cycles")
+plt.ylabel("smape")
 plt.grid()
 plt.show()
 
 plot_df["Spearman"].plot()
+plt.title("SpearmanRho")
+plt.xlabel("cycles")
+plt.ylabel("spearman_rho")
 plt.grid()
 plt.show()
 
