@@ -36,72 +36,22 @@ class BADGE(BaseBatchAcquisitionFunction):
                  last_model: PytorchMLPRegressorWithUncertainty) -> List:
         U__back_slash__S = dataset_x.subset(available_indices)
         gradient_embedding: np.ndarray = last_model.get_gradient_embedding(U__back_slash__S).numpy()
-        S_t = self.kmeans_algorithm4(gradient_embedding, batch_size)
+        S_t = self.kmeans_algorithm(gradient_embedding, batch_size)
         # print(U__back_slash__S.get_shape())
         # print(S_t)
         # print(batch_size)
         selected_queries = [available_indices[idx] for idx in S_t]
         return selected_queries
 
+
+    """
+    For kmeans algorithms provided by sklearn, 
+    they are designed to perform clustering.
+    Therefore, the algorithms cannot fit into BADGE
+    as it requires initialisation scheme of kmeans++.
+    """
     @staticmethod
-    def kmeans_algorithm1(gradient_embedding, k):
-        # Used sklearn kmeans
-        return KMeans(n_clusters=k, n_init=k, random_state=0, init='random') \
-            .fit_predict(gradient_embedding).tolist()
-
-    @staticmethod
-    def kmeans_algorithm2(gradient_embedding, k):
-        # Used sklearn kmeans++
-        # kmeans++ has better convergence speed than kmeans
-        return KMeans(n_clusters=k, n_init=k, random_state=0, init='k-means++') \
-            .fit(gradient_embedding) \
-            .cluster_centers_.tolist()
-
-    @staticmethod
-    def _get_distance(a, b):
-        return sum((a - b) ** 2) / len(a)
-
-    @staticmethod
-    def _get_group_center(ds):
-        return np.array(ds).mean(axis=0)
-
-    def kmeans_algorithm3(self, gradient_embedding, k, iter_num=25) -> List:
-        # kmeans
-        # ref: https://parkeunsang.github.io/blog/datascience/2021/03/10/pythonk-means.html
-
-        logs = list()
-        centers = gradient_embedding[np.random.choice(len(gradient_embedding), size=k, replace=False)]
-        for _ in range(iter_num):
-            group = {i: list() for i in range(k)}
-
-            for data in gradient_embedding:
-                tmp = list()
-                for i in range(k):
-                    tmp.append(self._get_distance(centers[i], data))
-                group[np.argmin(tmp)].append(list(data))
-
-            for i in range(k):
-                group_temp = np.array(group[i])
-                group_temp = np.c_[group_temp, np.full(len(group_temp), i)]
-                if i == 0:
-                    grouped = group_temp
-                else:
-                    grouped = np.append(grouped, group_temp, axis=0)
-
-            centers_new = list()
-            for i in range(k):
-                centers_new.append(list(self._get_group_center(group[i])))
-            centers_new = np.array(centers_new)
-
-            if np.sum(centers - centers_new) == 0:
-                break
-            else:
-                centers = centers_new.copy()
-
-        return grouped
-
-    @staticmethod
-    def kmeans_algorithm4(gradient_embedding, k) -> List:
+    def kmeans_algorithm(gradient_embedding, k) -> List:
         # kmeans++
         # ref: https://theory.stanford.edu/~sergei/papers/kMeansPP-soda.pdf
         # ref (code):
