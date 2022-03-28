@@ -33,7 +33,7 @@ class BADGE(BaseBatchAcquisitionFunction):
                  batch_size: int,
                  available_indices: List[AnyStr],
                  last_selected_indices: List[AnyStr],
-                 last_model: PytorchMLPRegressorWithUncertainty) -> List:
+                 last_model: AbstractBaseModel) -> List:
         U__back_slash__S = dataset_x.subset(available_indices)
         gradient_embedding: np.ndarray = last_model.get_gradient_embedding(U__back_slash__S).numpy()
         S_t = self.kmeans_algorithm(gradient_embedding, batch_size)
