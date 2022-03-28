@@ -7,6 +7,20 @@ from genedisco.active_learning_methods.acquisition_functions.base_acquisition_fu
     BaseBatchAcquisitionFunction
 
 
+"""
+active_learning_loop  \
+    --cache_directory=./genedisco_cache \
+    --output_directory=./genedisco_output \
+    --model_name="bayesian_mlp" \
+    --acquisition_function_name="custom" \
+    --acquisition_function_path=./src/functions/BALD.py \
+    --acquisition_batch_size=64 \
+    --num_active_learning_cycles=16 \
+    --feature_set_name="achilles" \
+    --dataset_name="schmidt_2021_ifng" 
+"""
+
+
 def softmax_temperature(x, temperature=1):
     """Computes softmax probabilities from unnormalized values
 
