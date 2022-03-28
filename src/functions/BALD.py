@@ -74,12 +74,12 @@ class SoftUncertainAcquisition(BaseBatchAcquisitionFunction):
                  temperature: float = 0.9,
                  ) -> List:
         avail_dataset_x = dataset_x.subset(available_indices)
-        model_pedictions = model.predict(avail_dataset_x)
+        model_predictions = model.predict(avail_dataset_x)
 
-        if len(model_pedictions) != 3:
+        if len(model_predictions) != 3:
             raise TypeError("The provided model does not output uncertainty.")
 
-        pred_mean, pred_uncertainties, _ = model_pedictions
+        pred_mean, pred_uncertainties, _ = model_predictions
 
         if len(pred_mean) < select_size:
             raise ValueError("The number of query samples exceeds"
