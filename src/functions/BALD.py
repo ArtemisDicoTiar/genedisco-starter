@@ -15,7 +15,7 @@ active_learning_loop  \
     --acquisition_function_name="custom" \
     --acquisition_function_path=./src/functions/BALD.py \
     --acquisition_batch_size=64 \
-    --num_active_learning_cycles=16 \
+    --num_active_learning_cycles=32 \
     --feature_set_name="achilles" \
     --dataset_name="schmidt_2021_ifng" 
 """
@@ -77,39 +77,39 @@ class TopUncertainAcquisition(BaseBatchAcquisitionFunction):
 
         return selected_indices
 
-
-class SoftUncertainAcquisition(BaseBatchAcquisitionFunction):
-    def __call__(self,
-                 dataset_x: AbstractDataSource,
-                 select_size: int,
-                 available_indices: List[AnyStr],
-                 last_selected_indices: List[AnyStr] = None,
-                 model: AbstractBaseModel = None,
-                 temperature: float = 0.9,
-                 ) -> List:
-        avail_dataset_x = dataset_x.subset(available_indices)
-        model_predictions = model.predict(avail_dataset_x)
-
-        if len(model_predictions) != 3:
-            raise TypeError("The provided model does not output uncertainty.")
-
-        pred_mean, pred_uncertainties, _ = model_predictions
-
-        if len(pred_mean) < select_size:
-            raise ValueError("The number of query samples exceeds"
-                             "the size of the available data.")
-        # add some prob for selection.
-        # softmax by the temperature
-        selection_probabilities = softmax_temperature(
-            np.log(1e-7 + pred_uncertainties ** 2),
-            temperature,
-        )
-        # random choice with softmax_temp prob.
-        numerical_selected_indices = np.random.choice(
-            range(len(selection_probabilities)),
-            size=select_size,
-            replace=False,
-            p=selection_probabilities)
-        selected_indices = [available_indices[i] for i
-                            in numerical_selected_indices]
-        return selected_indices
+#
+# class SoftUncertainAcquisition(BaseBatchAcquisitionFunction):
+#     def __call__(self,
+#                  dataset_x: AbstractDataSource,
+#                  select_size: int,
+#                  available_indices: List[AnyStr],
+#                  last_selected_indices: List[AnyStr] = None,
+#                  model: AbstractBaseModel = None,
+#                  temperature: float = 0.9,
+#                  ) -> List:
+#         avail_dataset_x = dataset_x.subset(available_indices)
+#         model_predictions = model.predict(avail_dataset_x)
+#
+#         if len(model_predictions) != 3:
+#             raise TypeError("The provided model does not output uncertainty.")
+#
+#         pred_mean, pred_uncertainties, _ = model_predictions
+#
+#         if len(pred_mean) < select_size:
+#             raise ValueError("The number of query samples exceeds"
+#                              "the size of the available data.")
+#         # add some prob for selection.
+#         # softmax by the temperature
+#         selection_probabilities = softmax_temperature(
+#             np.log(1e-7 + pred_uncertainties ** 2),
+#             temperature,
+#         )
+#         # random choice with softmax_temp prob.
+#         numerical_selected_indices = np.random.choice(
+#             range(len(selection_probabilities)),
+#             size=select_size,
+#             replace=False,
+#             p=selection_probabilities)
+#         selected_indices = [available_indices[i] for i
+#                             in numerical_selected_indices]
+#         return selected_indices

@@ -20,7 +20,7 @@ active_learning_loop  \
     --acquisition_function_name="custom" \
     --acquisition_function_path=./src/functions/BADGE.py \
     --acquisition_batch_size=64 \
-    --num_active_learning_cycles=16 \
+    --num_active_learning_cycles=32 \
     --feature_set_name="achilles" \
     --dataset_name="schmidt_2021_ifng" 
 """

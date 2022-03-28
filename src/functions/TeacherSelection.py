@@ -1,4 +1,3 @@
-from collections import Counter
 from typing import AnyStr, List
 
 import numpy as np
@@ -8,53 +7,22 @@ from scipy import stats
 from sklearn.metrics import pairwise_distances
 from slingpy import AbstractDataSource, AbstractBaseModel
 
-
 """
 active_learning_loop  \
     --cache_directory=./genedisco_cache \
     --output_directory=./genedisco_output \
     --model_name="bayesian_mlp" \
     --acquisition_function_name="custom" \
-    --acquisition_function_path=./src/functions/Ensemble.py \
+    --acquisition_function_path=./src/functions/TeacherSelection.py \
     --acquisition_batch_size=64 \
-    --num_active_learning_cycles=32 \
+    --num_active_learning_cycles=16 \
     --feature_set_name="achilles" \
     --dataset_name="schmidt_2021_ifng" 
 """
 
 
-class TopUncertainAcquisition(BaseBatchAcquisitionFunction):
-    def __call__(self,
-                 dataset_x: AbstractDataSource,
-                 select_size: int,
-                 available_indices: List[AnyStr],
-                 last_selected_indices: List[AnyStr] = None,
-                 model: AbstractBaseModel = None,
-                 ) -> List:
-        avail_dataset_x = dataset_x.subset(available_indices)
-        model_pedictions = model.predict(avail_dataset_x, return_std_and_margin=True)
-
-        if len(model_pedictions) != 3:
-            raise TypeError("The provided model does not output uncertainty.")
-
-        pred_mean, pred_uncertainties, _ = model_pedictions
-
-        if len(pred_mean) < select_size:
-            raise ValueError("The number of query samples exceeds"
-                             "the size of the available data.")
-
-        # np.flip => [::-1]
-        numerical_selected_indices = np.flip(
-            # np.argsort => index of sorted by value.
-            np.argsort(pred_uncertainties)
-
-        )[:select_size]  # until selection size
-        selected_indices = [available_indices[i] for i in numerical_selected_indices]
-
-        return selected_indices
-
-
-class BADGE(BaseBatchAcquisitionFunction):
+class BADGETeacher(BaseBatchAcquisitionFunction):
+    teachers = []
 
     def __call__(self,
                  dataset_x: AbstractDataSource,
@@ -62,6 +30,7 @@ class BADGE(BaseBatchAcquisitionFunction):
                  available_indices: List[AnyStr],
                  last_selected_indices: List[AnyStr],
                  last_model: AbstractBaseModel) -> List:
+
         U__back_slash__S = dataset_x.subset(available_indices)
         gradient_embedding: np.ndarray = last_model.get_gradient_embedding(U__back_slash__S).numpy()
         S_t = self.kmeans_algorithm(gradient_embedding, batch_size)
@@ -71,13 +40,13 @@ class BADGE(BaseBatchAcquisitionFunction):
         selected_queries = [available_indices[idx] for idx in S_t]
         return selected_queries
 
-
     """
     For kmeans algorithms provided by sklearn, 
     they are designed to perform clustering.
     Therefore, the algorithms cannot fit into BADGE
     as it requires initialisation scheme of kmeans++.
     """
+
     @staticmethod
     def kmeans_algorithm(gradient_embedding, k) -> List:
         # kmeans++
@@ -112,10 +81,10 @@ class BADGE(BaseBatchAcquisitionFunction):
                 for i in range(len(gradient_embedding)):
                     # 만약 이전에 생성한 거리가 새로 생성된것보다 길다면.
                     if D2[i] > newD[i]:
-                        centInds[i] = cent      # 중심의 값을 cent로 변경.
-                        D2[i] = newD[i]     # 새로 생성한 거리를 D2에 override.
+                        centInds[i] = cent  # 중심의 값을 cent로 변경.
+                        D2[i] = newD[i]  # 새로 생성한 거리를 D2에 override.
 
-            D2 = D2.ravel().astype(float)       # flatten
+            D2 = D2.ravel().astype(float)  # flatten
 
             # 편중 확률 분포
             Ddist = (D2 ** 2) / sum(D2 ** 2)
@@ -133,51 +102,3 @@ class BADGE(BaseBatchAcquisitionFunction):
             # center count ++
             cent += 1
         return indsAll
-
-
-class EnsembleBALDnBADGE(BaseBatchAcquisitionFunction):
-    def __call__(self,
-                 dataset_x: AbstractDataSource,
-                 select_size: int,
-                 available_indices: List[AnyStr],
-                 last_selected_indices: List[AnyStr] = None,
-                 model: AbstractBaseModel = None,
-                 ) -> List:
-        coef = 3
-        buffer_size = select_size * coef
-
-        top_uncertain = TopUncertainAcquisition().__call__(
-            dataset_x,
-            buffer_size,
-            available_indices,
-            last_selected_indices,
-            model,
-        )
-
-        # soft uncertain only can be applied to model that provides uncertainty
-        # soft_uncertain = SoftUncertainAcquisition().__call__(
-        #     dataset_x,
-        #     buffer_size,
-        #     available_indices,
-        #     last_selected_indices,
-        #     model,
-        #     temperature=0.9
-        # )
-
-        badge = BADGE().__call__(
-            dataset_x,
-            buffer_size,
-            available_indices,
-            last_selected_indices,
-            model,
-        )
-
-        total_concat = top_uncertain + badge
-        total_count = sorted(
-            Counter(total_concat).items(),
-            key=lambda item: -item[1]
-        )
-
-        candidates = total_count[:select_size]
-        return candidates
-
