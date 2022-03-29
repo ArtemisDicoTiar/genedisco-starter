@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-model = "ensemble"
+model = "bald_top_teacher"
 
 project_root = Path('./').absolute().parent.parent
 

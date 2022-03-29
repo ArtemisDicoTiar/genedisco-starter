@@ -4,7 +4,7 @@ import numpy as np
 from genedisco.active_learning_methods.acquisition_functions.base_acquisition_function import \
     BaseBatchAcquisitionFunction
 from scipy import stats
-from sklearn.metrics import pairwise_distances
+from sklearn.metrics import pairwise_distances, accuracy_score, r2_score
 from slingpy import AbstractDataSource, AbstractBaseModel
 
 """
@@ -13,9 +13,9 @@ active_learning_loop  \
     --output_directory=./genedisco_output \
     --model_name="bayesian_mlp" \
     --acquisition_function_name="custom" \
-    --acquisition_function_path=./src/functions/TeacherSelection.py \
+    --acquisition_function_path=./src/functions/BADGETeacherSelection.py \
     --acquisition_batch_size=64 \
-    --num_active_learning_cycles=16 \
+    --num_active_learning_cycles=32 \
     --feature_set_name="achilles" \
     --dataset_name="schmidt_2021_ifng" 
 """
@@ -30,9 +30,12 @@ class BADGETeacher(BaseBatchAcquisitionFunction):
                  available_indices: List[AnyStr],
                  last_selected_indices: List[AnyStr],
                  last_model: AbstractBaseModel) -> List:
-
         U__back_slash__S = dataset_x.subset(available_indices)
-        gradient_embedding: np.ndarray = last_model.get_gradient_embedding(U__back_slash__S).numpy()
+
+        self.teachers.append(last_model)
+        best_model = self.get_best_model(U__back_slash__S)
+
+        gradient_embedding: np.ndarray = best_model.get_gradient_embedding(U__back_slash__S).numpy()
         S_t = self.kmeans_algorithm(gradient_embedding, batch_size)
         # print(U__back_slash__S.get_shape())
         # print(S_t)
@@ -40,13 +43,26 @@ class BADGETeacher(BaseBatchAcquisitionFunction):
         selected_queries = [available_indices[idx] for idx in S_t]
         return selected_queries
 
+    def get_best_model(self, dataset):
+        scores = []
+        for teacher in self.teachers:
+            preds = teacher.predict(dataset)
+            _, real, _ = teacher.get_outputs(dataset)
+            scores.append(self.get_accuracy(preds[0], real.detach().tolist()))
+
+        best_idx = np.argmax(np.array(scores))
+        return self.teachers[best_idx]
+
+    @staticmethod
+    def get_accuracy(pred, real):
+        return r2_score(pred, real)
+
     """
     For kmeans algorithms provided by sklearn, 
     they are designed to perform clustering.
     Therefore, the algorithms cannot fit into BADGE
     as it requires initialisation scheme of kmeans++.
     """
-
     @staticmethod
     def kmeans_algorithm(gradient_embedding, k) -> List:
         # kmeans++
