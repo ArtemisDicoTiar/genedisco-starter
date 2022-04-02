@@ -67,7 +67,8 @@ class BALDTopTeacher(BaseBatchAcquisitionFunction):
             scores.append(self.get_accuracy(preds[0], real.detach().tolist()))
 
         best_idx = np.argmax(np.array(scores))
-        return self.teachers[best_idx]
+        self.teachers = [self.teachers[best_idx]]
+        return self.teachers[0]
 
     @staticmethod
     def get_accuracy(pred, real):
@@ -104,7 +105,8 @@ class BADGETeacher(BaseBatchAcquisitionFunction):
             scores.append(self.get_accuracy(preds[0], real.detach().tolist()))
 
         best_idx = np.argmax(np.array(scores))
-        return self.teachers[best_idx]
+        self.teachers = [self.teachers[best_idx]]
+        return self.teachers[0]
 
     @staticmethod
     def get_accuracy(pred, real):
@@ -184,7 +186,8 @@ class EnsembleBALDnBADGE(BaseBatchAcquisitionFunction):
             scores.append(self.get_accuracy(preds[0], real.detach().tolist()))
 
         best_idx = np.argmax(np.array(scores))
-        return self.teachers[best_idx]
+        self.teachers = [self.teachers[best_idx]]
+        return self.teachers[0]
 
     @staticmethod
     def get_accuracy(pred, real):
@@ -199,6 +202,8 @@ class EnsembleBALDnBADGE(BaseBatchAcquisitionFunction):
                  ) -> List:
         coef = 3
         buffer_size = select_size * coef
+
+
 
         top_uncertain = BALDTopTeacher().__call__(
             dataset_x,

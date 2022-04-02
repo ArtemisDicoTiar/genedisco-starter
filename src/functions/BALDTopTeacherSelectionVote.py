@@ -1,14 +1,29 @@
 import pickle
 from collections import Counter
 from pathlib import Path
+
+import scipy
+import numpy as np
 from typing import AnyStr, List
 
-import numpy as np
-from genedisco.active_learning_methods.acquisition_functions.base_acquisition_function import \
-    BaseBatchAcquisitionFunction
 from sklearn.metrics import r2_score
 from slingpy import AbstractDataSource
 from slingpy.models.abstract_base_model import AbstractBaseModel
+from genedisco.active_learning_methods.acquisition_functions.base_acquisition_function import \
+    BaseBatchAcquisitionFunction
+
+"""
+active_learning_loop  \
+    --cache_directory=./genedisco_cache \
+    --output_directory=./genedisco_output \
+    --model_name="bayesian_mlp" \
+    --acquisition_function_name="custom" \
+    --acquisition_function_path=./src/functions/BALDTopTeacherSelectionVote.py \
+    --acquisition_batch_size=64 \
+    --num_active_learning_cycles=32 \
+    --feature_set_name="achilles" \
+    --dataset_name="schmidt_2021_ifng" 
+"""
 
 
 class BALDTopTeacherVote(BaseBatchAcquisitionFunction):

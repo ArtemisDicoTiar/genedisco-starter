@@ -1,17 +1,32 @@
 import pickle
 from collections import Counter
 from pathlib import Path
+
+import scipy
+import numpy as np
 from typing import AnyStr, List
 
-import numpy as np
-from genedisco.active_learning_methods.acquisition_functions.base_acquisition_function import \
-    BaseBatchAcquisitionFunction
 from sklearn.metrics import r2_score
 from slingpy import AbstractDataSource
 from slingpy.models.abstract_base_model import AbstractBaseModel
+from genedisco.active_learning_methods.acquisition_functions.base_acquisition_function import \
+    BaseBatchAcquisitionFunction
+
+"""
+active_learning_loop  \
+    --cache_directory=./genedisco_cache \
+    --output_directory=./genedisco_output \
+    --model_name="bayesian_mlp" \
+    --acquisition_function_name="custom" \
+    --acquisition_function_path=./src/functions/BALDTopTeacherSelectionMulti.py \
+    --acquisition_batch_size=64 \
+    --num_active_learning_cycles=32 \
+    --feature_set_name="achilles" \
+    --dataset_name="schmidt_2021_ifng" 
+"""
 
 
-class BALDTopTeacherVote(BaseBatchAcquisitionFunction):
+class BALDTopTeacherMulti(BaseBatchAcquisitionFunction):
     teachers = []
     selections = []
 
@@ -22,7 +37,6 @@ class BALDTopTeacherVote(BaseBatchAcquisitionFunction):
                  last_selected_indices: List[AnyStr] = None,
                  last_model: AbstractBaseModel = None,
                  ) -> List:
-        self.select_size = select_size
         coef = 3
         buffer_size = select_size * coef
 
@@ -53,58 +67,40 @@ class BALDTopTeacherVote(BaseBatchAcquisitionFunction):
             )[:buffer_size]  # until selection size
             for pred_uncertainty in pred_uncertainties
         ]
-        selected_indices = [
+        selected_indices = Counter([
             available_indices[idx]
             for numerical_selected_idx in numerical_selected_indices
             for idx in numerical_selected_idx
-        ]
+        ]).items()
 
         total_count = sorted(
-            Counter(selected_indices).items(),
+            selected_indices,
             key=lambda item: -item[1]
         )
-        candidates = self.get_targets(total_count)
-
-        with Path('./selections(BALD).txt').open("ab") as f:
+        candidates = total_count[:select_size]
+        with Path('./selections(BALD).txt').open("wb") as f:
             pickle.dump(self.selections, f)
         with Path('./selectedQueries(BALD).txt').open("ab") as f:
-            pickle.dump(selected_indices, f)
+            pickle.dump(list(selected_indices), f)
 
         return candidates
-
-    def get_targets(self, candidates):
-        targets = {
-            1: [],
-            2: []
-        }
-        for candidate in candidates:
-            idx, count = candidate
-            targets[count].append(idx)
-
-        if len(targets[2]) > self.select_size:
-            return np.random.choice(targets[2], size=self.select_size, replace=False)
-        else:
-            missing = self.select_size - len(targets[2])
-            return np.append(
-                np.array(targets[2]),
-                np.random.choice(targets[1], size=missing, replace=False)
-            )
 
     def get_best_models(self, dataset):
         scores = []
         for teacher in self.teachers:
-            preds, real, _ = teacher.get_outputs(dataset)
-            scores.append(self.get_accuracy(preds.detach().tolist(), real.detach().tolist()))
+            preds = teacher.predict(dataset)
+            _, real, _ = teacher.get_outputs(dataset)
+            scores.append(self.get_accuracy(preds[0], real.detach().tolist()))
 
         best_idxs = np.flip(
             # np.argsort => index of sorted by value.
             np.argsort(np.array(scores))
 
         )
-        self.selections = best_idxs[:2]
+        self.selections.append(best_idxs[:3])
         return [
             self.teachers[i]
-            for i in best_idxs[:2]
+            for i in best_idxs[:3]
         ]
 
     @staticmethod
